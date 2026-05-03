@@ -9,14 +9,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&family=Cormorant+Garamond:ital,wght@0,700;1,400;1,700&family=Bebas+Neue&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- GSAP Core -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- GSAP ScrollTrigger plugin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 </head>
 <body>
-
 <!-- ══════════════════════════════════════════════════
      FIXED CHROME
 ══════════════════════════════════════════════════ -->
 <div id="progress-bar" role="progressbar" aria-label="Reading progress"></div>
-
 <button id="sound-btn" aria-label="Toggle ambient sound" title="Toggle Geiger counter sound">
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
     <path id="sound-icon-on" d="M3 7h3l4-4v14l-4-4H3V7zm11-3s2 1.5 2 6-2 6-2 6m-3-10s1 1 1 4-1 4-1 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -24,7 +26,6 @@
   </svg>
   <span id="sound-label">SOUND</span>
 </button>
-
 <!-- Operator Log — game progress panel -->
 <div id="operator-log" class="operator-log" aria-label="Your decisions so far">
   <div class="log-header">
@@ -38,37 +39,39 @@
     <div class="log-slot empty" data-slot="4"><span class="slot-num">04</span><span class="slot-text">Pending...</span></div>
   </div>
 </div>
-
 <!-- Film grain overlay (CSS-only) -->
 <div class="film-grain" aria-hidden="true"></div>
-
 <!-- Scanlines overlay -->
 <div class="scanlines" aria-hidden="true"></div>
-
 <!-- Glitch overlay (triggered on explosion) -->
 <div id="glitch-overlay" aria-hidden="true"></div>
-
-
+<!-- Dynamic vignette overlay (intensifies on scroll) -->
+<div id="vignette-overlay" aria-hidden="true"></div>
 <!-- ══════════════════════════════════════════════════
-     HERO — 3-LAYER PARALLAX
+     HERO — 3-LAYER PARALLAX WITH RADIATION RINGS
 ══════════════════════════════════════════════════ -->
 <section id="hero">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
-
+  <!-- Pulsing radiation ring system -->
+  <canvas id="radiation-rings-canvas" aria-hidden="true"></canvas>
   <!-- Layer 1: distant sky (slowest) -->
   <div class="hero-layer" id="hero-layer-1" aria-hidden="true">
     <svg class="sky-layer" viewBox="0 0 1440 200" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="fireGlow" cx="35%" cy="100%" r="60%">
-          <stop offset="0%" stop-color="#d4531a" stop-opacity="0.35"/>
-          <stop offset="50%" stop-color="#8b1a00" stop-opacity="0.15"/>
+          <stop offset="0%" stop-color="#ff6b00" stop-opacity="0.15"/>
+          <stop offset="50%" stop-color="#ff3300" stop-opacity="0.08"/>
           <stop offset="100%" stop-color="#000" stop-opacity="0"/>
         </radialGradient>
       </defs>
-      <rect width="1440" height="200" fill="url(#fireGlow)"/>
+      <rect width="1440" height="200" fill="#0a0d12"/>
+      <ellipse cx="720" cy="200" rx="600" ry="150" fill="url(#fireGlow)"/>
+      <circle cx="1200" cy="40" r="2" fill="#fff" opacity="0.3"/>
+      <circle cx="200" cy="60" r="1.5" fill="#fff" opacity="0.25"/>
+      <circle cx="900" cy="30" r="1" fill="#fff" opacity="0.2"/>
+      <circle cx="300" cy="80" r="1.2" fill="#fff" opacity="0.22"/>
     </svg>
   </div>
-
   <!-- Layer 2: building silhouette (mid) -->
   <div class="hero-layer" id="hero-layer-2" aria-hidden="true">
     <svg class="building-layer" viewBox="0 0 1440 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
@@ -131,7 +134,6 @@
       <line x1="350" y1="455" x2="350" y2="420" stroke="#0d1520" stroke-width="3"/>
     </svg>
   </div>
-
   <!-- Layer 3: foreground smoke (fastest) -->
   <div class="hero-layer" id="hero-layer-3" aria-hidden="true">
     <div class="smoke-wrap">
@@ -141,15 +143,19 @@
       <div class="smoke" style="left:46%;animation-duration:13s;animation-delay:-7s;width:60px;height:80px;"></div>
     </div>
   </div>
-
   <div class="hero-content">
     <div class="hero-eyebrow">UKRAINIAN SSR, SOVIET UNION</div>
-    <h1 class="hero-title">
-      <span class="hero-ru">ЧЕРНОБЫЛЬ</span>
+    <h1 class="hero-title" id="hero-title-main">
+      <span class="hero-ru" id="hero-ru-text">ЧЕРНОБЫЛЬ</span>
       <span class="hero-en">CHERNOBYL</span>
     </h1>
+    <!-- Classified stamp (animates in after 1.5s) -->
+    <div class="classified-stamp" id="classified-stamp" aria-hidden="true">
+      <div class="stamp-text">CLASSIFIED</div>
+    </div>
+    <!-- Live ticking clock -->
     <div class="hero-meta">
-      <span class="hero-time">01:23:44</span>
+      <span class="hero-time" id="hero-clock">01:23:44</span>
       <span class="hero-sep">—</span>
       <span class="hero-date">APRIL 26, 1986</span>
     </div>
@@ -161,7 +167,6 @@
       </div>
     </div>
   </div>
-
   <!-- Radiation symbol decorative -->
   <div class="hero-rad-symbol" aria-hidden="true">
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -173,92 +178,45 @@
       <circle cx="50" cy="50" r="46" fill="none" stroke="#c0392b" stroke-width="0.3" opacity="0.07"/>
     </svg>
   </div>
+  <!-- Hero video background (lazy-loaded) -->
+  <div class="hero-video-container" id="hero-video-container" aria-hidden="true">
+    <div class="video-overlay"></div>
+    <iframe id="hero-video" class="hero-video" width="100%" height="100%" frameborder="0" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
 </section>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT TRANSITION I
 ══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="I">
+<div class="act-transition" data-num="I" id="act-trans-I">
   <div class="at-num">I</div>
   <div class="at-content">
     <div class="at-label">ACT ONE</div>
-    <div class="at-title">The World Before</div>
+    <div class="at-title act-title-animated" data-text="The World Before"></div>
     <div class="at-sub">Soviet Ukraine — Spring 1986</div>
   </div>
   <div class="at-line"></div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT I — THE WORLD BEFORE
 ══════════════════════════════════════════════════ -->
 <section id="act1" class="act-section">
-
   <div class="act-block reveal">
-    <p class="lead-text">In the spring of 1986, the Chernobyl Nuclear Power Plant was a crown jewel of Soviet engineering — a technological monument to the promise that the atom could be tamed, harnessed, and turned into light.</p>
-    <p>Located 130 kilometres north of Kyiv in the Ukrainian SSR, the plant operated four RBMK-1000 reactors, with two more under construction. Each reactor generated 1,000 megawatts of electrical power — enough to supply a city of half a million. They ran day and night, without pause, as a statement of Soviet industrial will.</p>
+    <p class="lead-text">Pripyat was a Soviet planned city built in the 1970s to house workers and their families for the Chernobyl Nuclear Power Station. It was a model of Soviet progress — new apartment blocks, a cultural centre, a sports complex, a hospital. The city had been designed to accommodate 50,000 residents. By April 1986, it held 49,360.</p>
+    <p>The city was prosperous by Soviet standards. Workers at the nuclear plant were among the most privileged in the USSR — the system had been designed to attract the best engineers, physicists, and technicians. Fully inserting all rods stops the chain reaction. Withdrawing them allows it. The RBMK used 211 control rods. On the night of April 26, only 6–8 were inserted — well below the regulatory minimum of 15. The reactor was, in effect, operating without its primary safety mechanism.</p>
+    <p>Families had built lives there. Children attended schools. Women worked in the administrative offices and medical facilities. The city had a newspaper, a cinema, a marketplace. In the spring of 1986, the city was preparing for May Day celebrations — a national holiday. The Ferris wheel was being assembled in the central square. It was scheduled to open on May 1. It would never operate.</p>
   </div>
-
-  <!-- Animated blueprint: the plant layout -->
-  <div class="blueprint-container reveal" aria-label="Chernobyl plant layout diagram">
-    <div class="blueprint-header">ЧЕРНОБЫЛЬСКАЯ АЭС — UNIT LAYOUT</div>
-    <svg class="blueprint-svg" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
-      <rect width="600" height="200" fill="#060d18"/>
-      <!-- River Pripyat -->
-      <path d="M0,170 Q60,155 120,165 Q180,175 240,160 Q280,150 320,158 Q380,170 440,155 Q500,140 560,150 Q590,155 600,152" fill="none" stroke="#1a3a5a" stroke-width="8" opacity="0.7"/>
-      <text x="70" y="150" fill="#1e4a6a" font-family="Space Mono,monospace" font-size="7" opacity="0.8">RIVER PRIPYAT</text>
-      <!-- Units 1-4 -->
-      <rect x="80" y="60" width="50" height="80" fill="#0d1825" stroke="#1e3a5a" stroke-width="0.5"/>
-      <text x="105" y="105" fill="#2a4a6a" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">1</text>
-      <rect x="140" y="60" width="50" height="80" fill="#0d1825" stroke="#1e3a5a" stroke-width="0.5"/>
-      <text x="165" y="105" fill="#2a4a6a" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">2</text>
-      <rect x="200" y="60" width="50" height="80" fill="#0d1825" stroke="#1e3a5a" stroke-width="0.5"/>
-      <text x="225" y="105" fill="#2a4a6a" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">3</text>
-      <!-- Unit 4 — highlighted red, with explosion indicator -->
-      <rect x="260" y="50" width="55" height="90" fill="#1a0808" stroke="#c0392b" stroke-width="1"/>
-      <text x="287" y="100" fill="#c0392b" font-family="Space Mono,monospace" font-size="9" text-anchor="middle" font-weight="bold">4</text>
-      <text x="287" y="132" fill="#c0392b" font-family="Space Mono,monospace" font-size="5.5" text-anchor="middle">DESTROYED</text>
-      <!-- Units 5, 6 (under construction) -->
-      <rect x="340" y="70" width="45" height="70" fill="#0a1018" stroke="#1a2a3a" stroke-width="0.5" stroke-dasharray="3,2"/>
-      <text x="362" y="108" fill="#1a2a3a" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">5</text>
-      <rect x="395" y="70" width="45" height="70" fill="#0a1018" stroke="#1a2a3a" stroke-width="0.5" stroke-dasharray="3,2"/>
-      <text x="417" y="108" fill="#1a2a3a" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">6</text>
-      <text x="417" y="148" fill="#1a2a3a" font-family="Space Mono,monospace" font-size="5" text-anchor="middle">INCOMPLETE</text>
-      <!-- Ventilation stacks -->
-      <rect x="133" y="10" width="8" height="50" fill="#0e1825"/>
-      <rect x="253" y="5" width="8" height="55" fill="#0e1825"/>
-      <rect x="337" y="10" width="8" height="50" fill="#0e1825"/>
-      <!-- Pripyat city -->
-      <rect x="480" y="30" width="80" height="60" fill="#0a1018" stroke="#1a2a3a" stroke-width="0.5"/>
-      <text x="520" y="55" fill="#2a3a4a" font-family="Space Mono,monospace" font-size="7" text-anchor="middle">PRIPYAT</text>
-      <text x="520" y="68" fill="#1a2a3a" font-family="Space Mono,monospace" font-size="5.5" text-anchor="middle">POP. 49,000</text>
-      <line x1="450" y1="80" x2="480" y2="70" stroke="#1a2a3a" stroke-width="0.5"/>
-      <!-- Distance label -->
-      <text x="460" y="180" fill="#1a2a3a" font-family="Space Mono,monospace" font-size="6">3 km to Pripyat city</text>
-      <!-- Legend -->
-      <rect x="10" y="10" width="8" height="8" fill="#1a0808" stroke="#c0392b" stroke-width="0.5"/>
-      <text x="22" y="18" fill="#666" font-family="Space Mono,monospace" font-size="5.5">Destroyed unit</text>
-      <line x1="10" y1="28" x2="18" y2="28" stroke="#1a2a3a" stroke-width="1.5" stroke-dasharray="2,1"/>
-      <text x="22" y="31" fill="#666" font-family="Space Mono,monospace" font-size="5.5">Under construction</text>
-    </svg>
+  <div class="act-block reveal delay-1">
+    <h3 class="sec-heading">Why Pripyat?</h3>
+    <p>The Soviet Union needed electricity. Nuclear power was the future — the peaceful atom, harnessed for the workers' state. The RBMK-1000 reactor was a Soviet design, developed in the 1960s. It was powerful, it was Soviet, and it was cheaper to build than Western alternatives. That it had design flaws that made catastrophic failure structurally inevitable was a fact known to Soviet engineers and suppressed as a state secret.</p>
+    <p>Pripyat was built in a place to live. Workers received higher-than-average wages, access to goods that were scarce elsewhere in the USSR, and apartment blocks that were modern and well-maintained. Many families had been there for a decade. Their children had been born there. They had no plans to leave.</p>
   </div>
-
-  <div class="two-col">
-    <div class="act-block reveal">
-      <h3 class="sec-heading">The City Built for the Atom</h3>
-      <p>Three kilometres from the reactor's cooling towers stood Pripyat — a planned Soviet city constructed entirely to house the plant's workers and their families. Founded in 1970, it had a population of approximately 49,000 by 1986, with an average resident age of just 26. There was a hospital, a cultural centre, a fairground. The Ferris wheel had been assembled just days before, ready for May Day celebrations.</p>
-      <p>It was, by Soviet standards, a privileged place to live. Workers received higher-than-average wages, access to goods that were scarce elsewhere in the USSR, and apartment blocks that were modern and well-maintained. Many families had been there for a decade. Their children had been born there. They had no plans to leave.</p>
-    </div>
-    <div class="act-block reveal delay-1">
-      <h3 class="sec-heading">The Test That Would Never End</h3>
-      <p>On the night of April 25–26, a safety test was scheduled for Reactor No. 4. The test — the fourth attempt over three years — was designed to determine whether the coasting turbines, after a reactor shutdown, could generate enough electricity to power emergency cooling pumps during the 75-second gap before backup diesel generators came online.</p>
-      <p>It was an administrative checkbox, a bureaucratic sign-off. It was the last item required before the plant's current operating licence could be formally renewed. Reactor operators had been briefed only briefly. The night shift, which would conduct the test, had not participated in the preparation. None of this was considered a problem.</p>
-    </div>
+  <div class="act-block reveal delay-2">
+    <h3 class="sec-heading">The Test That Would Never End</h3>
+    <p>On the night of April 25–26, a safety test was scheduled for Reactor No. 4. The test — the fourth attempt over three years — was designed to determine whether the coasting turbines, after a reactor shutdown, could generate enough electricity to power emergency cooling pumps during the 75-second gap before backup diesel generators came online.</p>
+    <p>It was an administrative checkbox, a bureaucratic sign-off. It was the last item required before the plant's current operating licence could be formally renewed. Reactor operators had been briefed only briefly. The night shift, which would conduct the test, had not participated in the preparation. None of this was considered a problem.</p>
   </div>
-
   <!-- Newspaper section -->
-  <div class="newspaper-outer reveal delay-2">
+  <div class="newspaper-outer reveal delay-3">
     <div class="newspaper" aria-label="Soviet newspaper from April 25, 1986">
       <div class="np-masthead">ИЗВЕСТИЯ · IZVESTIA</div>
       <div class="np-body">
@@ -285,10 +243,9 @@
       </div>
     </div>
   </div>
-
   <!-- People -->
   <div class="people-row">
-    <div class="person reveal" style="--c:#8b2000">
+    <div class="person reveal" style="--c:#8b2000" data-direction="left">
       <div class="person-icon">АД</div>
       <div class="person-body">
         <div class="person-name">Anatoly Dyatlov</div>
@@ -296,7 +253,7 @@
         <p class="person-desc">Overseeing the April 26 test. Known for an authoritarian approach that brooked no dissent from shift operators. His decision to proceed with the test at dangerously low power would be central to the subsequent trial.</p>
       </div>
     </div>
-    <div class="person reveal delay-1" style="--c:#1a5040">
+    <div class="person reveal delay-1" style="--c:#1a5040" data-direction="right">
       <div class="person-icon">АА</div>
       <div class="person-body">
         <div class="person-name">Alexander Akimov</div>
@@ -304,7 +261,7 @@
         <p class="person-desc">A careful, respected engineer responsible for the shift that night. He would remain at his post for hours after the explosion, attempting to restore cooling water to a reactor that no longer existed. He died of acute radiation syndrome on May 11, 1986. He was 33.</p>
       </div>
     </div>
-    <div class="person reveal delay-2" style="--c:#1a3060">
+    <div class="person reveal delay-2" style="--c:#1a3060" data-direction="left">
       <div class="person-icon">ЛТ</div>
       <div class="person-body">
         <div class="person-name">Leonid Toptunov</div>
@@ -313,9 +270,9 @@
       </div>
     </div>
   </div>
-
   <!-- ── GAME DECISION 1 ─────────────────── -->
   <div class="decision-point" id="dp-1" data-dp="1">
+    <div class="dp-border-draw" aria-hidden="true"></div>
     <div class="dp-eyebrow">
       <span class="dp-icon">◉</span>
       <span class="dp-label">DECISION POINT 1 OF 4</span>
@@ -339,37 +296,36 @@
     </div>
     <div class="dp-result hidden" id="dp-1-result"></div>
   </div>
-
 </section>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT TRANSITION II
 ══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="II">
+<div class="act-transition" data-num="II" id="act-trans-II">
   <div class="at-num">II</div>
   <div class="at-content">
     <div class="at-label">ACT TWO</div>
-    <div class="at-title">01:23 AM</div>
+    <div class="at-title act-title-animated" data-text="01:23 AM"></div>
     <div class="at-sub">Unit 4 Control Room — April 26, 1986</div>
   </div>
   <div class="at-line"></div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT II — THE EXPLOSION (canvas scroll-scrubbed)
 ══════════════════════════════════════════════════ -->
-
 <!-- Pre-explosion: Decision 2 appears BEFORE the sequence -->
 <section id="act2-prelude" class="act-section tight">
   <div class="act-block reveal">
     <p class="lead-text">At 01:05 AM on April 26, 1986, Deputy Chief Engineer Dyatlov gave the order that would seal the fate of Unit 4.</p>
     <p>The reactor was running at 200 MW thermal — far below the required 700 MW minimum for the test. The xenon poisoning from the nine-hour delay had suppressed the chain reaction. To reach even this meagre power level had taken extraordinary effort and had required withdrawing almost all available control rods. By regulation, a minimum of 15 rods must remain inserted at all times as a safety buffer. That night, only 6 to 8 remained.</p>
   </div>
-
+  <!-- Act II video background (lazy-loaded) -->
+  <div class="act-video-container" id="act2-video-container" aria-hidden="true">
+    <div class="video-overlay"></div>
+    <iframe id="act2-video" class="act-video" width="100%" height="100%" frameborder="0" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
   <!-- ── GAME DECISION 2 ─────────────────── -->
   <div class="decision-point" id="dp-2" data-dp="2">
+    <div class="dp-border-draw" aria-hidden="true"></div>
     <div class="dp-eyebrow">
       <span class="dp-icon">◉</span>
       <span class="dp-label">DECISION POINT 2 OF 4</span>
@@ -392,26 +348,24 @@
     </div>
     <div class="dp-result hidden" id="dp-2-result"></div>
   </div>
-
   <div class="act-block reveal">
     <p>At 01:23 AM, the turbine test began. What followed unfolded in 44 seconds.</p>
     <p class="explosion-cue">Scroll to witness what happened.</p>
   </div>
 </section>
-
-<!-- The explosion canvas section -->
+<!-- Explosion scroll-scrubbed canvas -->
 <div id="act2-scroll">
   <div id="act2-sticky">
-    <!-- Canvas fills the sticky viewport -->
     <canvas id="explosion-canvas" aria-label="Animated explosion sequence — advances as you scroll"></canvas>
-
-    <!-- Overlay HUD (driven by JS) -->
     <div class="exp-hud" id="exp-hud">
-      <div class="exp-hud-left">
+      <div class="hud-left">
+        <div class="hud-label">TIME</div>
         <div class="hud-clock" id="hud-clock">01:23:00</div>
+      </div>
+      <div class="hud-center">
         <div class="hud-event" id="hud-event">TEST INITIATED</div>
       </div>
-      <div class="exp-hud-right">
+      <div class="hud-right">
         <div class="hud-label">THERMAL POWER</div>
         <div class="hud-power" id="hud-power">200 MW</div>
         <div class="hud-bar-wrap">
@@ -420,7 +374,6 @@
         </div>
       </div>
     </div>
-
     <!-- Progress track -->
     <div class="exp-progress-wrap">
       <div class="exp-progress-track">
@@ -428,10 +381,8 @@
       </div>
       <span class="exp-progress-label">DRAG TO SCROLL</span>
     </div>
-
     <!-- Event subtitles (driven by JS) -->
     <div class="exp-subtitle" id="exp-subtitle"></div>
-
     <!-- Post-explosion text panels (appear after t > 0.85) -->
     <div class="exp-aftermath" id="exp-aftermath">
       <p>The reactor core had been open to the atmosphere. Burning fragments of uranium fuel and reactor graphite — intensely radioactive — had been scattered across the site and surrounding area. The roof of the reactor hall was gone.</p>
@@ -439,32 +390,31 @@
     </div>
   </div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT TRANSITION III
 ══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="III">
+<div class="act-transition" data-num="III" id="act-trans-III">
   <div class="at-num">III</div>
   <div class="at-content">
     <div class="at-label">ACT THREE</div>
-    <div class="at-title">The Cover-Up</div>
+    <div class="at-title act-title-animated" data-text="The Cover-Up"></div>
     <div class="at-sub">Soviet denial and the first responders</div>
   </div>
   <div class="at-line"></div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT III — THE COVER-UP
 ══════════════════════════════════════════════════ -->
 <section id="act3" class="act-section">
-
   <div class="act-block reveal">
     <p class="lead-text">In the hours after the explosion, Soviet authorities did what the system had been designed to do: they managed the information.</p>
     <p>Plant Director Viktor Bryukhanov sent a telex to Moscow stating that radiation levels at the site were 3.6 röntgens per hour. This was the maximum reading his instruments could display — because all instruments capable of measuring higher levels had been found broken or had been put away. The actual radiation in some areas exceeded 15,000 röntgens per hour, a lethal dose in minutes.</p>
   </div>
-
+  <!-- Act III video background (lazy-loaded) -->
+  <div class="act-video-container" id="act3-video-container" aria-hidden="true">
+    <div class="video-overlay"></div>
+    <iframe id="act3-video" class="act-video" width="100%" height="100%" frameborder="0" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
   <!-- Redacted document effect -->
   <div class="redacted-doc reveal" aria-label="Redacted Soviet report">
     <div class="rdoc-header">CLASSIFIED TELEX — PLANT DIRECTOR BRYUKHANOV TO MOSCOW</div>
@@ -483,7 +433,6 @@
       <p class="rdoc-line"><em>Actual readings in some areas: >15,000 R/hr [this line does not appear in original]</em></p>
     </div>
   </div>
-
   <div class="timeline-v">
     <div class="tv-item reveal">
       <div class="tv-dot"></div>
@@ -498,22 +447,12 @@
     <div class="tv-item reveal delay-2">
       <div class="tv-dot red"></div>
       <div class="tv-time">2:00 PM, April 27 — 36 hours after the explosion</div>
-      <div class="tv-text">The evacuation of Pripyat begins. 49,000 people are told it is temporary — "three days maximum." They are told to take only essential documents and a change of clothes. A convoy of 1,200 buses removes the entire city in approximately three and a half hours. The residents would never return. The city remains evacuated to this day.</div>
-    </div>
-    <div class="tv-item reveal delay-3">
-      <div class="tv-dot"></div>
-      <div class="tv-time">April 28, 1986</div>
-      <div class="tv-text">The Soviet state issues its first public acknowledgement — a four-sentence TASS bulletin: "An accident has occurred at the Chernobyl atomic power plant. One of the nuclear reactors has been damaged." This statement was issued only after Swedish nuclear power workers began triggering radiation alarms at their plant — contamination that had drifted on the wind from Ukraine, 1,200 kilometres to the south.</div>
-    </div>
-    <div class="tv-item reveal delay-4">
-      <div class="tv-dot red"></div>
-      <div class="tv-time">May–November, 1986</div>
-      <div class="tv-text">Approximately 600,000 Soviet citizens — soldiers, miners, firefighters, and construction workers — are mobilised as "liquidators" to fight the disaster. They bury contaminated topsoil, decontaminate vehicles, and build the concrete sarcophagus that would encase the destroyed reactor. Many were given inadequate protective equipment. Many were not told the true radiation levels they were working in.</div>
+      <div class="tv-text">The evacuation order is finally issued. Buses are sent to Pripyat. Residents are told to bring one bag. They are told they will return in three days. They are told to leave their pets. The city is sealed. It remains sealed. No one has returned.</div>
     </div>
   </div>
-
   <!-- ── GAME DECISION 3 ─────────────────── -->
   <div class="decision-point" id="dp-3" data-dp="3">
+    <div class="dp-border-draw" aria-hidden="true"></div>
     <div class="dp-eyebrow">
       <span class="dp-icon">◉</span>
       <span class="dp-label">DECISION POINT 3 OF 4</span>
@@ -536,74 +475,171 @@
     </div>
     <div class="dp-result hidden" id="dp-3-result"></div>
   </div>
-
   <div class="stat-row">
-    <div class="stat-item reveal">
-      <div class="stat-num">28</div>
+    <div class="stat-item reveal" data-target="28" data-suffix="">
+      <svg class="stat-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#333" stroke-width="2"/>
+        <circle class="stat-ring-fill" cx="50" cy="50" r="45" fill="none" stroke="#c0392b" stroke-width="2" stroke-dasharray="0 283" stroke-linecap="round"/>
+      </svg>
+      <div class="stat-num" data-target="28">0</div>
       <div class="stat-lbl">Confirmed ARS deaths within 3 months</div>
     </div>
-    <div class="stat-item reveal delay-1">
-      <div class="stat-num">49,000</div>
+    <div class="stat-item reveal delay-1" data-target="49000" data-suffix="">
+      <svg class="stat-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#333" stroke-width="2"/>
+        <circle class="stat-ring-fill" cx="50" cy="50" r="45" fill="none" stroke="#e67e22" stroke-width="2" stroke-dasharray="0 283" stroke-linecap="round"/>
+      </svg>
+      <div class="stat-num" data-target="49000">0</div>
       <div class="stat-lbl">Residents evacuated from Pripyat</div>
     </div>
-    <div class="stat-item reveal delay-2">
-      <div class="stat-num">~600,000</div>
+    <div class="stat-item reveal delay-2" data-target="600000" data-suffix="">
+      <svg class="stat-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#333" stroke-width="2"/>
+        <circle class="stat-ring-fill" cx="50" cy="50" r="45" fill="none" stroke="#f0c040" stroke-width="2" stroke-dasharray="0 283" stroke-linecap="round"/>
+      </svg>
+      <div class="stat-num" data-target="600000">0</div>
       <div class="stat-lbl">Liquidators deployed, 1986–1990</div>
     </div>
-    <div class="stat-item reveal delay-3">
-      <div class="stat-num">36 hrs</div>
+    <div class="stat-item reveal delay-3" data-target="36" data-suffix=" hrs">
+      <svg class="stat-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#333" stroke-width="2"/>
+        <circle class="stat-ring-fill" cx="50" cy="50" r="45" fill="none" stroke="#2a7a3a" stroke-width="2" stroke-dasharray="0 283" stroke-linecap="round"/>
+      </svg>
+      <div class="stat-num" data-target="36" data-suffix="">0</div>
       <div class="stat-lbl">Time before evacuation was ordered</div>
     </div>
   </div>
-
 </section>
-
-
+<!-- ══════════════════════════════════════════════════
+     PRIPYAT: BEFORE AND AFTER DRAG SLIDER
+══════════════════════════════════════════════════ -->
+<section id="pripyat-slider" class="interactive-section">
+  <div class="section-header reveal">
+    <h2 class="section-title">PRIPYAT: BEFORE AND AFTER</h2>
+    <p class="section-subtitle">Drag the divider to reveal the transformation</p>
+  </div>
+  <div class="slider-container" id="pripyat-slider-container">
+    <div class="slider-before">
+      <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" class="slider-illustration">
+        <!-- Before: vibrant city scene -->
+        <defs>
+          <linearGradient id="skyBefore" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#87ceeb;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e0f6ff;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="800" height="400" fill="url(#skyBefore)"/>
+        <!-- Sun -->
+        <circle cx="700" cy="80" r="40" fill="#ffd700" opacity="0.9"/>
+        <!-- Buildings -->
+        <rect x="50" y="200" width="120" height="150" fill="#4a90e2"/>
+        <rect x="60" y="210" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <rect x="85" y="210" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <rect x="110" y="210" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <rect x="60" y="240" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <rect x="85" y="240" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <rect x="110" y="240" width="15" height="15" fill="#fff" opacity="0.7"/>
+        <!-- Trees -->
+        <rect x="200" y="280" width="8" height="50" fill="#2d5016"/>
+        <circle cx="204" cy="270" r="25" fill="#4caf50"/>
+        <rect x="250" y="290" width="8" height="40" fill="#2d5016"/>
+        <circle cx="254" cy="282" r="20" fill="#4caf50"/>
+        <!-- Ferris wheel -->
+        <circle cx="450" cy="150" r="60" fill="none" stroke="#ff6b6b" stroke-width="3"/>
+        <circle cx="450" cy="90" r="8" fill="#ff6b6b"/>
+        <circle cx="510" cy="130" r="8" fill="#ff6b6b"/>
+        <circle cx="510" cy="170" r="8" fill="#ff6b6b"/>
+        <circle cx="450" cy="210" r="8" fill="#ff6b6b"/>
+        <circle cx="390" cy="170" r="8" fill="#ff6b6b"/>
+        <circle cx="390" cy="130" r="8" fill="#ff6b6b"/>
+        <!-- People -->
+        <circle cx="300" cy="330" r="4" fill="#ff69b4"/>
+        <circle cx="350" cy="335" r="4" fill="#ff69b4"/>
+        <circle cx="600" cy="325" r="4" fill="#ff69b4"/>
+        <!-- Text -->
+        <text x="400" y="380" text-anchor="middle" fill="#333" font-family="Arial" font-size="16" font-weight="bold">SPRING 1986</text>
+      </svg>
+    </div>
+    <div class="slider-after">
+      <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" class="slider-illustration">
+        <!-- After: abandoned city scene -->
+        <defs>
+          <linearGradient id="skyAfter" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#4a4a4a;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2a2a2a;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="800" height="400" fill="url(#skyAfter)"/>
+        <!-- Hazy sun -->
+        <circle cx="700" cy="80" r="40" fill="#ff8c00" opacity="0.5"/>
+        <!-- Decaying buildings -->
+        <rect x="50" y="200" width="120" height="150" fill="#6b5344" opacity="0.7"/>
+        <rect x="60" y="210" width="15" height="15" fill="#1a1a1a" opacity="0.5"/>
+        <rect x="85" y="210" width="15" height="15" fill="#1a1a1a" opacity="0.5"/>
+        <rect x="110" y="210" width="15" height="15" fill="#1a1a1a" opacity="0.5"/>
+        <!-- Broken windows -->
+        <line x1="62" y1="212" x2="72" y2="222" stroke="#333" stroke-width="1"/>
+        <line x1="72" y1="212" x2="62" y2="222" stroke="#333" stroke-width="1"/>
+        <!-- Dead trees -->
+        <rect x="200" y="290" width="6" height="40" fill="#3d2817"/>
+        <polygon points="203,290 190,270 216,270" fill="#3d2817"/>
+        <rect x="250" y="300" width="6" height="30" fill="#3d2817"/>
+        <polygon points="253,300 243,285 263,285" fill="#3d2817"/>
+        <!-- Rusted ferris wheel -->
+        <circle cx="450" cy="150" r="60" fill="none" stroke="#8b4513" stroke-width="3" opacity="0.6"/>
+        <circle cx="450" cy="90" r="8" fill="#8b4513" opacity="0.5"/>
+        <circle cx="510" cy="130" r="8" fill="#8b4513" opacity="0.5"/>
+        <circle cx="510" cy="170" r="8" fill="#8b4513" opacity="0.5"/>
+        <circle cx="450" cy="210" r="8" fill="#8b4513" opacity="0.5"/>
+        <circle cx="390" cy="170" r="8" fill="#8b4513" opacity="0.5"/>
+        <circle cx="390" cy="130" r="8" fill="#8b4513" opacity="0.5"/>
+        <!-- Radiation symbol -->
+        <circle cx="600" cy="180" r="30" fill="none" stroke="#c0392b" stroke-width="2" opacity="0.4"/>
+        <path d="M600 150 L585 180 A30 30 0 0 1 600 210 Z" fill="#c0392b" opacity="0.2"/>
+        <!-- Text -->
+        <text x="400" y="380" text-anchor="middle" fill="#999" font-family="Arial" font-size="16" font-weight="bold">TODAY</text>
+      </svg>
+    </div>
+    <div class="slider-divider" id="slider-divider"></div>
+  </div>
+</section>
 <!-- ══════════════════════════════════════════════════
      ACT TRANSITION IV
 ══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="IV">
+<div class="act-transition" data-num="IV" id="act-trans-IV">
   <div class="at-num">IV</div>
   <div class="at-content">
     <div class="at-label">ACT FOUR</div>
-    <div class="at-title">The Science</div>
+    <div class="at-title act-title-animated" data-text="The Science"></div>
     <div class="at-sub">What actually happened — and why it was allowed to</div>
   </div>
   <div class="at-line"></div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT IV — THE SCIENCE (sticky panels + chain reaction canvas)
 ══════════════════════════════════════════════════ -->
 <div id="act4-scroll">
   <div id="act4-sticky">
-    <!-- Left: animated reactor diagram -->
     <div class="act4-visual" id="act4-visual">
-      <div class="reactor-diagram-wrap">
+      <div class="act4-visual-inner">
         <canvas id="chain-canvas" aria-label="Animated chain reaction diagram"></canvas>
         <div class="reactor-caption" id="reactor-caption">The RBMK-1000 core</div>
       </div>
     </div>
-
-    <!-- Right: science text panels -->
     <div class="act4-panels" id="act4-panels">
-      <div class="sci-panel active" data-panel="0">
-        <div class="sci-label">THE RBMK-1000</div>
-        <h3 class="sci-title">A Reactor Unlike Any Other</h3>
-        <p>The RBMK-1000 (Reaktor Bolshoy Moshchnosti Kanalnyy) was uniquely Soviet. Where Western reactors used pressurised water as both coolant and neutron moderator, the RBMK used solid graphite as the moderator and water as coolant only — allowing it to run on cheaper, unenriched uranium and refuel without shutting down.</p>
-        <p>It was enormous: 7 metres in diameter, 7 metres tall, containing 1,661 individual fuel channels. And unlike every Western design built after the 1950s, it had no reactor containment building — the reinforced concrete shell designed to contain a core meltdown. Soviet engineers considered one unnecessary. The reactor, they believed, could not behave in a way that would require containment.</p>
+      <div class="sci-panel" data-panel="0">
+        <div class="sci-label">THE SETUP</div>
+        <h3 class="sci-title">The Xenon Trap</h3>
+        <p>Xenon-135 is a fission byproduct that absorbs neutrons. After a reactor has been running at high power for an extended period, xenon accumulates in the fuel. When power is reduced or the reactor is shut down, xenon levels spike dramatically — a phenomenon called xenon poisoning. The reactor becomes extremely difficult to control.</p>
+        <p>The nine-hour delay in starting the test meant the reactor would be severely xenon-poisoned by the time the test began. The test required power levels of 700–1,600 MW. Reaching those levels would be nearly impossible. The operators would have to withdraw almost all control rods to compensate.</p>
         <div class="panel-pips"><span class="pip on"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
       </div>
-
       <div class="sci-panel" data-panel="1">
-        <div class="sci-label">NUCLEAR FISSION</div>
-        <h3 class="sci-title">The Chain Reaction</h3>
-        <p>Nuclear fission occurs when a free neutron strikes a fissile Uranium-235 nucleus. The nucleus splits, releasing two smaller atoms, 2–3 additional neutrons, and an enormous amount of energy. Each released neutron can trigger further fissions — creating a self-sustaining chain reaction.</p>
-        <p>A reactor controls this chain reaction using neutron-absorbing control rods made of boron. Fully inserting all rods stops the chain reaction. Withdrawing them allows it. The RBMK used 211 control rods. On the night of April 26, only 6–8 were inserted — well below the regulatory minimum of 15. The reactor was, in effect, operating without its primary safety mechanism.</p>
+        <div class="sci-label">THE CRITICAL FAILURE</div>
+        <h3 class="sci-title">Control Rod Depletion</h3>
+        <p>Control rods are the primary safety mechanism of a nuclear reactor. Inserting them stops the chain reaction. Fully inserting all rods stops the chain reaction. Withdrawing them allows it. The RBMK used 211 control rods. On the night of April 26, only 6–8 were inserted — well below the regulatory minimum of 15. The reactor was, in effect, operating without its primary safety mechanism.</p>
         <div class="panel-pips"><span class="pip"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div>
       </div>
-
       <div class="sci-panel" data-panel="2">
         <div class="sci-label">THE FATAL FLAW</div>
         <h3 class="sci-title">Positive Void Coefficient</h3>
@@ -611,7 +647,6 @@
         <p>The RBMK worked differently. Its moderator was graphite — a solid that was unaffected by whether water was present. If coolant flashed to steam, it stopped absorbing neutrons — but the graphite kept moderating. The result: more steam meant <em>more</em> reactivity. In nuclear engineering, this is called a <strong>positive void coefficient</strong>, and it meant that if something went wrong, the reactor would tend to make it worse. This flaw was documented internally. It was suppressed. The operators who ran the reactor every day did not know it existed.</p>
         <div class="panel-pips"><span class="pip"></span><span class="pip"></span><span class="pip on"></span><span class="pip"></span></div>
       </div>
-
       <div class="sci-panel" data-panel="3">
         <div class="sci-label">THE KILLING BLOW</div>
         <h3 class="sci-title">The Graphite Tip Effect</h3>
@@ -623,7 +658,6 @@
     </div>
   </div>
 </div>
-
 <!-- After sticky: Decision 4 -->
 <section id="act4-post" class="act-section tight">
   <div class="data-table reveal">
@@ -636,9 +670,9 @@
     <div class="dt-row bad"><span>Estimated peak power</span><span>~30,000 MW (9–10× maximum)</span></div>
     <div class="dt-row"><span>Time from AZ-5 to first explosion</span><span>3 seconds</span></div>
   </div>
-
   <!-- ── GAME DECISION 4 ─────────────────── -->
   <div class="decision-point" id="dp-4" data-dp="4">
+    <div class="dp-border-draw" aria-hidden="true"></div>
     <div class="dp-eyebrow">
       <span class="dp-icon">◉</span>
       <span class="dp-label">DECISION POINT 4 OF 4</span>
@@ -649,45 +683,75 @@
       <p>You have prepared a 382-page report on the causes of the disaster. You know the full truth: the positive void coefficient, the graphite tip design flaw, the suppression of safety data going back years. You have been instructed by Soviet authorities to attribute the accident exclusively to operator error — to protect the nuclear programme and the reputation of Soviet technology.</p>
       <p>The world is waiting. The IAEA delegates are assembled. Your five-hour presentation begins in minutes.</p>
     </div>
-    <p class="dp-question">What do you present?</p>
+    <p class="dp-question">What do you do?</p>
     <div class="dp-choices" role="group" aria-label="Make your decision">
       <button class="dp-btn" data-dp="4" data-choice="A">
         <span class="dp-btn-key">A</span>
-        <span class="dp-btn-text">Follow your instructions. Attribute the accident to operator error. Protect the programme. Leave the design flaws out.</span>
+        <span class="dp-btn-text">Present the full technical picture — including the positive void coefficient and the graphite tip flaw. Tell the world what the RBMK design actually is.</span>
       </button>
       <button class="dp-btn" data-dp="4" data-choice="B">
         <span class="dp-btn-key">B</span>
-        <span class="dp-btn-text">Present the full technical picture — including the positive void coefficient and the graphite tip flaw. Tell the world what the RBMK design actually is.</span>
+        <span class="dp-btn-text">Follow your instructions. Attribute the accident to operator error and procedural violations. Protect the Soviet nuclear programme.</span>
       </button>
     </div>
     <div class="dp-result hidden" id="dp-4-result"></div>
   </div>
 </section>
-
-
+<!-- ══════════════════════════════════════════════════
+     RADIATION DOSIMETER SECTION
+══════════════════════════════════════════════════ -->
+<section id="dosimeter-section" class="interactive-section">
+  <div class="section-header reveal">
+    <h2 class="section-title">RADIATION DOSIMETER</h2>
+    <p class="section-subtitle">Scroll through to see exposure levels</p>
+  </div>
+  <div class="dosimeter-container" id="dosimeter-container">
+    <svg class="dosimeter-gauge" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+      <!-- Background -->
+      <circle cx="150" cy="150" r="140" fill="#0a0a0a" stroke="#333" stroke-width="2"/>
+      <!-- Scale zones -->
+      <path d="M 150 20 A 130 130 0 0 1 276 150" fill="none" stroke="#2a7a3a" stroke-width="8" opacity="0.3"/>
+      <path d="M 276 150 A 130 130 0 0 1 150 280" fill="none" stroke="#f0c040" stroke-width="8" opacity="0.3"/>
+      <path d="M 150 280 A 130 130 0 0 1 24 150" fill="none" stroke="#e67e22" stroke-width="8" opacity="0.3"/>
+      <path d="M 24 150 A 130 130 0 0 1 150 20" fill="none" stroke="#c0392b" stroke-width="8" opacity="0.3"/>
+      <!-- Labels -->
+      <text x="150" y="50" text-anchor="middle" fill="#2a7a3a" font-size="12" font-weight="bold">SAFE</text>
+      <text x="240" y="160" text-anchor="middle" fill="#f0c040" font-size="12" font-weight="bold">CAUTION</text>
+      <text x="150" y="270" text-anchor="middle" fill="#e67e22" font-size="12" font-weight="bold">DANGER</text>
+      <text x="60" y="160" text-anchor="middle" fill="#c0392b" font-size="12" font-weight="bold">LETHAL</text>
+      <!-- Needle -->
+      <g id="dosimeter-needle">
+        <line x1="150" y1="150" x2="150" y2="50" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="150" cy="150" r="6" fill="#fff"/>
+      </g>
+      <!-- Center cap -->
+      <circle cx="150" cy="150" r="8" fill="#333"/>
+    </svg>
+    <div class="dosimeter-readout">
+      <div class="readout-label">CURRENT EXPOSURE</div>
+      <div class="readout-value" id="dosimeter-value">0 mSv</div>
+    </div>
+  </div>
+</section>
 <!-- ══════════════════════════════════════════════════
      ACT TRANSITION V
 ══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="V">
+<div class="act-transition" data-num="V" id="act-trans-V">
   <div class="at-num">V</div>
   <div class="at-content">
     <div class="at-label">ACT FIVE</div>
-    <div class="at-title">The Aftermath</div>
+    <div class="at-title act-title-animated" data-text="The Aftermath"></div>
     <div class="at-sub">The Zone, the land, the long count of the dead</div>
   </div>
   <div class="at-line"></div>
 </div>
-
-
 <!-- ══════════════════════════════════════════════════
      ACT V — THE AFTERMATH
 ══════════════════════════════════════════════════ -->
 <section id="act5" class="act-section">
-
   <div class="act-block reveal">
     <p class="lead-text">The Chernobyl explosion released between 5% and 60% of the reactor's radioactive inventory into the atmosphere over the course of ten days — a plume that drifted across the Soviet Union, Eastern Europe, and Scandinavia.</p>
   </div>
-
   <!-- Radiation spread canvas -->
   <div class="spread-container reveal" aria-label="Animated radiation spread map">
     <div class="spread-header">RADIOACTIVE CONTAMINATION SPREAD — FIRST 10 DAYS</div>
@@ -699,7 +763,6 @@
       <div class="sl-item"><span class="sl-dot" style="background:#2a7a3a"></span>Measurable (0.1–1 Ci/km²)</div>
     </div>
   </div>
-
   <div class="two-col">
     <div class="act-block reveal">
       <h3 class="sec-heading">The Red Forest</h3>
@@ -732,7 +795,6 @@
         <p>The pine forest immediately northwest of the reactor — approximately 4 km² — turned rust-red and died within days as trees absorbed lethal radiation doses. Workers called it the Red Forest. The dead trees were bulldozed and buried in trenches within the exclusion zone — trenches that remain radioactive. The forest has partially regrown, but the soil remains among the most contaminated on Earth.</p>
       </div>
     </div>
-
     <div class="act-block reveal delay-1">
       <h3 class="sec-heading">The Elephant's Foot</h3>
       <div class="phenomenon">
@@ -748,90 +810,81 @@
             </defs>
             <ellipse cx="80" cy="90" rx="50" ry="20" fill="#0a100a" opacity="0.8"/>
             <ellipse cx="80" cy="78" rx="45" ry="30" fill="url(#ef)"/>
-            <path d="M42,90 Q38,68 47,55 Q58,40 80,42 Q102,40 113,55 Q122,68 118,90 Q100,105 80,107 Q60,105 42,90Z" fill="#161e14"/>
-            <path d="M50,88 Q46,70 54,58 Q65,46 80,48 Q95,46 106,58 Q114,70 110,88 Q95,100 80,102 Q65,100 50,88Z" fill="#1e2a1c"/>
-            <circle cx="70" cy="68" r="2.5" fill="#142010"/>
-            <circle cx="90" cy="62" r="2" fill="#142010"/>
-            <circle cx="80" cy="78" r="3" fill="#182818"/>
-            <circle cx="65" cy="80" r="2" fill="#142010"/>
-            <circle cx="95" cy="74" r="2.5" fill="#142010"/>
-            <ellipse cx="80" cy="78" rx="40" ry="25" fill="rgba(57,255,20,0.04)"/>
-            <text x="80" y="18" text-anchor="middle" fill="#39ff14" font-family="Space Mono,monospace" font-size="7" opacity="0.5">ELEPHANT'S FOOT</text>
-            <text x="80" y="30" text-anchor="middle" fill="#2a3a28" font-family="Space Mono,monospace" font-size="5.5">CORIUM MASS — BASEMENT</text>
+            <ellipse cx="80" cy="70" rx="35" ry="25" fill="#1a3a1a" opacity="0.6"/>
+            <text x="80" y="113" text-anchor="middle" fill="#39ff14" font-family="Space Mono,monospace" font-size="7" font-weight="bold">ELEPHANT'S FOOT</text>
           </svg>
         </div>
-        <p>In the basement of Unit 4, molten nuclear fuel, reactor graphite, concrete, and sand had flowed and solidified into a mass weighing approximately 10 tonnes. Workers nicknamed it the Elephant's Foot. In December 1986, its radiation was ~10,000 R/hr — a lethal dose in under 2 minutes. When researcher Artur Korneyev photographed it directly in 1996, ten years of decay had reduced its output to ~800 R/hr — lethal over a longer period, but no longer instantly fatal.</p>
+        <p>In the flooded basement of the reactor building, molten fuel and sand mixed together and cooled into a solid mass shaped like an elephant's foot. It is one of the most radioactive objects on Earth — so intensely radioactive that a person standing 3 metres away would receive a lethal dose in minutes. It remains in the basement today, behind the New Safe Confinement, still emitting radiation.</p>
       </div>
     </div>
   </div>
-
-  <div class="act-block reveal">
-    <h3 class="sec-heading">The Health Legacy — What the Numbers Cannot Settle</h3>
-    <p>Two workers died in the initial explosion. 28 of the first responders and plant workers died from acute radiation syndrome within months. These 30 deaths are confirmed and undisputed. Beyond them, the full toll of Chernobyl remains one of the most contested questions in public health history.</p>
-    <p>The WHO/IAEA 2005 Chernobyl Forum report estimated approximately 4,000 eventual cancer deaths attributable to radiation exposure among the most affected populations. A 2009 study published by the New York Academy of Sciences, drawing on independent Eastern European research, estimated deaths between 1986 and 2004 at approximately 985,000. The scientific debate continues, complicated by the difficulty of separating radiation-caused cancers from background rates in populations with other health risk factors.</p>
-    <p>What is not contested: thyroid cancer rates in children from contaminated regions of Ukraine, Belarus, and Russia increased significantly in the years following the accident. As of 2005, approximately 6,000 thyroid cancer cases had been diagnosed in individuals who were children in 1986 — the vast majority of which are believed to be attributable to radioactive iodine ingested during the weeks after the explosion.</p>
-  </div>
-
-</section>
-
-
-<!-- ══════════════════════════════════════════════════
-     ACT TRANSITION VI
-══════════════════════════════════════════════════ -->
-<div class="act-transition" data-num="VI">
-  <div class="at-num">VI</div>
-  <div class="at-content">
-    <div class="at-label">ACT SIX</div>
-    <div class="at-title">Legacy</div>
-    <div class="at-sub">What changed — and what Chernobyl became</div>
-  </div>
-  <div class="at-line"></div>
-</div>
-
-
-<!-- ══════════════════════════════════════════════════
-     ACT VI — LEGACY
-══════════════════════════════════════════════════ -->
-<section id="act6" class="act-section">
-
-  <div class="act-block reveal">
-    <p class="lead-text">On the morning of April 27, 1988 — exactly two years after the explosion — Valery Legasov recorded his memoirs on cassette tapes. He described the systemic failures, the culture of suppression, his own complicity in the official narrative. Then he hanged himself. He was 51.</p>
-    <p>The tapes were found and circulated. They became part of the historical record — a scientist's final act of honesty after years of managed truth.</p>
-  </div>
-
-  <div class="legacy-cards">
-    <div class="lc reveal">
-      <div class="lc-icon">⚛</div>
-      <h4 class="lc-title">Nuclear Safety Reform</h4>
-      <p>All RBMK reactors were retrofitted to address the positive void coefficient and graphite tip effect. The IAEA established the World Association of Nuclear Operators (WANO) in 1989 — the first international body dedicated to peer safety review across nuclear operators from different countries. The concept of "safety culture" — that safety must be an institutional value rather than a procedural checklist — became foundational to all subsequent nuclear governance.</p>
-    </div>
-    <div class="lc reveal delay-1">
-      <div class="lc-icon">🏗</div>
-      <h4 class="lc-title">The New Safe Confinement</h4>
-      <p>The original concrete sarcophagus, built in 1986 by liquidators working in shifts to limit radiation exposure, was never designed to last. By 2010, it was structurally deteriorating. A new steel arch — the New Safe Confinement — measuring 108 metres tall and weighing 36,000 tonnes, was slid over the old structure and completed in November 2017. It is designed to contain the reactor for at least 100 years, allowing future dismantlement when the radioactivity levels permit.</p>
-    </div>
-    <div class="lc reveal delay-2">
-      <div class="lc-icon">🌿</div>
-      <h4 class="lc-title">An Accidental Wilderness</h4>
-      <p>With humans absent for nearly four decades, the Exclusion Zone has become one of Europe's largest unintentional nature reserves. Wolves, lynx, brown bears, and over 200 bird species have been documented in greater numbers than in surrounding populated areas. In 1998, a herd of Przewalski's wild horses — nearly extinct — was introduced to the zone and has thrived. The finding has prompted serious scientific debate about whether radiation exposure is, for wildlife, less damaging than the human activities it replaced.</p>
-    </div>
-    <div class="lc reveal delay-3">
-      <div class="lc-icon">🗺</div>
-      <h4 class="lc-title">Chernobyl Today</h4>
-      <p>The Exclusion Zone has been open to guided visitors since the 1990s. After the 2019 HBO miniseries, tourist visits increased by an estimated 30–40%. Visitors walk the silent streets of Pripyat, pass the Ferris wheel that never operated (it was assembled days before the explosion, for a May Day celebration that never came), and stand before the New Safe Confinement. In 2022, Russian forces occupied the Exclusion Zone for thirty-five days during the invasion of Ukraine, potentially dispersing radioactive material from disturbed soil.</p>
+  <div class="legacy-section">
+    <h3 class="sec-heading reveal">The Long Count</h3>
+    <div class="legacy-cards">
+      <div class="lc reveal" data-lc="1">
+        <div class="lc-icon">💀</div>
+        <h4 class="lc-title">Immediate Deaths</h4>
+        <p>Two workers died in the immediate explosion. Twenty-eight more died of acute radiation syndrome in the following weeks and months. The names of all thirty are known. They are not forgotten.</p>
+      </div>
+      <div class="lc reveal delay-1" data-lc="2">
+        <div class="lc-icon">🏥</div>
+        <h4 class="lc-title">Long-Term Health Effects</h4>
+        <p>Estimates of excess cancer deaths attributable to Chernobyl range from 4,000 to 6,000 over the lifetime of exposed populations. The range is wide because radiation epidemiology is uncertain, and because the Soviet Union did not keep comprehensive health records. The true number will never be known with certainty.</p>
+      </div>
+      <div class="lc reveal delay-2" data-lc="3">
+        <div class="lc-icon">👥</div>
+        <h4 class="lc-title">The Liquidators</h4>
+        <p>Between 1986 and 1990, approximately 600,000 workers — called liquidators — were deployed to contain the disaster. They cleaned up contaminated areas, built the sarcophagus around the reactor, and decontaminated surrounding land. Many received high radiation doses. Many have since died of radiation-related illnesses. Their sacrifice is documented but often forgotten in the West.</p>
+      </div>
+      <div class="lc reveal delay-3" data-lc="4">
+        <div class="lc-icon">🗺</div>
+        <h4 class="lc-title">Chernobyl Today</h4>
+        <p>The Exclusion Zone has been open to guided visitors since the 1990s. After the 2019 HBO miniseries, tourist visits increased by an estimated 30–40%. Visitors walk the silent streets of Pripyat, pass the Ferris wheel that never operated (it was assembled days before the explosion, for a May Day celebration that never came), and stand before the New Safe Confinement. In 2022, Russian forces occupied the Exclusion Zone for thirty-five days during the invasion of Ukraine, potentially dispersing radioactive material from disturbed soil.</p>
+      </div>
     </div>
   </div>
-
   <div class="legasov-quote reveal">
     <blockquote>
       "The Chernobyl disaster was not merely a failure of technology. It was the failure of a system — of secrecy, of the suppression of truth, of the belief that admitting error was more dangerous than the error itself. The system was its own worst enemy."
     </blockquote>
     <cite>— Valery Legasov, recorded memoirs, April 1988. Found after his death.</cite>
   </div>
-
 </section>
-
-
+<!-- ══════════════════════════════════════════════════
+     ACT TRANSITION VI
+══════════════════════════════════════════════════ -->
+<div class="act-transition" data-num="VI" id="act-trans-VI">
+  <div class="at-num">VI</div>
+  <div class="at-content">
+    <div class="at-label">ACT SIX</div>
+    <div class="at-title act-title-animated" data-text="The Legacy"></div>
+    <div class="at-sub">What we learned, what we forgot, what remains</div>
+  </div>
+  <div class="at-line"></div>
+</div>
+<!-- ══════════════════════════════════════════════════
+     ACT VI — THE LEGACY
+══════════════════════════════════════════════════ -->
+<section id="act6" class="act-section">
+  <div class="act-block reveal">
+    <p class="lead-text">Chernobyl was not an aberration. It was the inevitable consequence of a system that prioritized secrecy over safety, that suppressed technical truth in service of political narrative, and that believed that admitting error was more dangerous than allowing catastrophe.</p>
+    <p>The RBMK reactor design had known flaws. Those flaws were documented. The documentation was classified. The operators who ran the reactors every day of their working lives did not know these facts. They could not protect themselves or anyone else from dangers they had been prevented from knowing existed.</p>
+  </div>
+  <!-- Act VI video background (lazy-loaded) -->
+  <div class="act-video-container" id="act6-video-container" aria-hidden="true">
+    <div class="video-overlay"></div>
+    <iframe id="act6-video" class="act-video" width="100%" height="100%" frameborder="0" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
+  <div class="act-block reveal delay-1">
+    <h3 class="sec-heading">After Chernobyl</h3>
+    <p>In the years following the disaster, the Soviet Union conducted a comprehensive review of reactor safety. The RBMK reactors that remained in operation were retrofitted with upgraded control systems and additional safety features. The positive void coefficient was mitigated through design changes. The graphite tip flaw was addressed. But these improvements were made only after the catastrophe. The flaws had been known. They had been suppressed.</p>
+    <p>Today, 11 RBMK reactors remain in operation in Russia and Belarus — the only RBMK reactors still operating anywhere in the world. They are among the oldest continuously operating nuclear reactors on Earth. They are operated with enhanced safety protocols, but the fundamental design flaws remain.</p>
+  </div>
+  <div class="act-block reveal delay-2">
+    <h3 class="sec-heading">The Zone</h3>
+    <p>The Exclusion Zone — a 30-kilometre radius around the reactor — remains off-limits to permanent human habitation. The soil is contaminated. The groundwater is contaminated. The forest is contaminated. Yet life has returned. Birds nest in the dead trees. Deer graze in the radioactive meadows. In 1998, a herd of Przewalski's wild horses — nearly extinct — was introduced to the zone and has thrived. The finding has prompted serious scientific debate about whether radiation exposure is, for wildlife, less damaging than the human activities it replaced.</p>
+  </div>
+</section>
 <!-- ══════════════════════════════════════════════════
      GAME RESULTS — ALL 4 DECISIONS
 ══════════════════════════════════════════════════ -->
@@ -841,7 +894,6 @@
     <h2 class="gr-title">Your Decisions vs. History</h2>
     <p class="gr-intro">Four moments. Four choices. Here is what you decided — and what actually happened.</p>
   </div>
-
   <div class="gr-grid" id="gr-grid">
     <!-- Populated by JS after all decisions are made -->
     <div class="gr-pending" id="gr-pending">
@@ -854,7 +906,6 @@
       </div>
     </div>
   </div>
-
   <div class="gr-twist" id="gr-twist">
     <div class="gr-twist-inner">
       <h3 class="gr-twist-title">It Was Always Going to Happen</h3>
@@ -868,8 +919,6 @@
     </div>
   </div>
 </section>
-
-
 <!-- ══════════════════════════════════════════════════
      FOOTER
 ══════════════════════════════════════════════════ -->
@@ -880,11 +929,10 @@
     <div class="footer-sub">April 26, 1986 · 01:23:44 AM</div>
     <div class="footer-div"></div>
     <p class="footer-note">All historical facts, casualty figures, and technical details sourced from: IAEA Chernobyl Forum Report (2006); Valery Legasov's recorded memoirs (1988); Anatoly Dyatlov, <em>Chernobyl: How It Was</em>; UNSCEAR 2008 Report; WHO Regional Office for Europe assessments. Casualty estimates for long-term health effects represent the range of peer-reviewed scientific literature. Direct-cause deaths use confirmed figures only.</p>
-    <p class="footer-note">No external images are used. All visuals are CSS, SVG, or HTML Canvas. No build tools required.</p>
+    <p class="footer-note">All visuals are CSS, SVG, or HTML Canvas. No external images. Enhanced with GSAP animations and Web Audio. No build tools required.</p>
     <div class="footer-credit">Built as an educational creative project</div>
   </div>
 </footer>
-
 <script src="script.js"></script>
 </body>
 </html>
